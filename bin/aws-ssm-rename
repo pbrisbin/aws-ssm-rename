@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOM'
+
+Usage:
+  aws-ssm-rename [options] <expression> <replacement> <glob>...
+
+Rename AWS SSM parameters.
+
+Options:
+ -v, --verbose          explain what is being done
+ -n, --no-act           do not make any changes
+ -a, --all              replace all ocurrences
+ -o, --no-overwrite     don't overwrite existing parameters
+ -i, --interactive      prompt before overwrite
+
+ -h, --help             display this help
+ -V, --version          display version
+
+
+rename(1) features not implemented:
+ -s, --symlink
+ -l, --last
+
+For more details see aws-ssm-rename(1).
+EOM
+}
+
+get_all_parameter_names() {
+  aws ssm get-parameters-by-path \
+    --path / \
+    --recursive \
+    --query 'Parameters[].[Name]' \
+    --output text
+}
+
+does_parameter_exist() {
+  aws ssm get-parameter --name "$1" &>/dev/null
+}
+
+rename_parameter() {
+  local original=$1 updated=$2 needs_overwrite=$3 value
+
+  read -r value < \
+    <(aws ssm get-parameter --name "$original" --query 'Parameter.Value' --output text)
+
+  if ((needs_overwrite)); then
+    echo aws put-parameter --name "$updated" "$value" --overwrite
+  else
+    echo aws put-parameter --name "$updated" "$value"
+  fi
+
+  echo aws delete-parameter "$original"
+}
+
+prompt() {
+  local ans
+
+  read -r -p "$*? (y/n/q)" ans
+
+  case "$ans" in
+    y | Y) return 0 ;;
+    n | N) return 1 ;;
+    q | Q) exit 1 ;;
+    *)
+      echo "Invalid choice" >&2
+      prompt "$@"
+      ;;
+  esac
+}
+
+verbose=0
+act=1
+sed_options=
+overwrite=1
+interactive=0
+
+while (($#)); do
+  case "$1" in
+    -v | --verbose) verbose=1 ;;
+    -n | --no-act) act=0 ;;
+    -a | --all) sed_options=g ;;
+    -o | --no-overwrite) overwrite=0 ;;
+    -i | --interactive) interactive=1 ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -V | --version)
+      echo "aws-ssm-rename AWS_SSM_RENAME_VERSION"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Invalid option $1" >&2
+      usage >&2
+      exit 64
+      ;;
+    *) break ;;
+  esac
+  shift
+done
+
+if (($# < 3)); then
+  echo "Invalid usage (requires at least 3 arguments, saw $#)" >&2
+  usage >&2
+  exit 64
+fi
+
+expression=$1
+replacement=$2
+shift 2
+
+get_all_parameter_names | while read -r original; do
+  for pattern; do
+    # shellcheck disable=SC2053
+    if [[ "$original" != $pattern ]]; then
+      continue
+    fi
+
+    # shellcheck disable=SC2001
+    updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+
+    if ((verbose)); then
+      printf "\`%s' -> \`%s'\n" "$original" "$updated"
+    fi
+
+    if ((!act)); then
+      continue
+    fi
+
+    needs_overwrite=0
+
+    if does_parameter_exist "$updated"; then
+      needs_overwrite=1
+
+      if ((!overwrite)); then
+        if ((!interactive)); then
+          echo "Not overwriting existing parameter $updated" >&2
+          continue
+        fi
+
+        if ! prompt_yes "Overwrite $updated"; then
+          echo "Not overwriting existing parameter $updated" >&2
+          continue
+        fi
+      fi
+    fi
+
+    rename_parameter "$original" "$updated" "$needs_overwrite"
+  done
+done

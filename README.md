@@ -1,0 +1,1 @@
+man/aws-ssm-rename.1.ronn

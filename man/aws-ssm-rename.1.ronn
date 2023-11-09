@@ -1,0 +1,75 @@
+aws-ssm-rename(1) - rename AWS SSM parameters
+=================================================================
+
+## SYNOPSIS
+
+`aws-ssm-rename` [<options>] <expression> <replacement> <parameter>...
+
+## OPTIONS
+
+The following options match the behavior of `rename(1)`:
+
+  * `-v`, `--verbose`:
+    Show which files were renamed, if any.
+
+  * `-n`, `--no-act`:
+    Do not make any changes; add `--verbose` to see what would be made.
+
+  * `-a`, `--all`:
+    Replace all occurrences of <expression> rather than the first one.
+
+  * `-o`, `--no-overwrite`:
+    Do not overwrite existing parameters.
+
+  * `-i`, `--interactive`:
+    Ask before overwriting existing parameters.
+
+  * `-h`, `--help`:
+    Display help text and exit.
+
+  * `-V`, `--version`:
+    Print version and exit.
+
+The following options are specific to us:
+
+  * `-g`, `--no-glob`:
+    Don't consider <parameter> arguments as globs and rename only those
+    parameters that match them exactly. This avoids having to list all
+    parameters in the account, which may be prohibitively expensive for some
+    users.
+
+The following `rename(1)` options are not implemented by us:
+
+  * `-s`, `--symlink`:
+  * `-l`, `--last`:
+
+## WARNING
+
+The renaming has no safeguards by default or without any one of the options
+`--no-overwrite`, `--interactive` or `--no-act`. If the user has permission to
+rewrite parameters, the command will perform the action without any questions.
+
+## EXIT STATUS
+
+  * **0**:
+    all requested rename operations were successful
+
+  * **1**:
+    all rename operations failed
+
+  * **2**:
+    some rename operations failed
+
+  * **4**:
+    nothing was renamed
+
+  * **64**:
+    unanticipated error occurred
+
+## EXAMPLES
+
+TODO
+
+## SEE ALSO
+
+rename(1)
