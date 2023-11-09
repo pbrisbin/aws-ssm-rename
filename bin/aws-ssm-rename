@@ -85,7 +85,7 @@ prompt() {
   case "$ans" in
     y | Y) return 0 ;;
     n | N) return 1 ;;
-    q | Q) exit 1 ;;
+    q | Q) exit 0 ;;
     *)
       echo "Invalid choice" >&2
       prompt "$@"
