@@ -49,6 +49,14 @@ cd aws-ssm-rename
 make install.check
 ```
 
+## TODO
+
+- [ ] Implement exit statuses as documented
+- [ ] Add examples to docs
+- [ ] Consider an actual programming language
+- [ ] Implement completions
+- [ ] Add tests
+
 ---
 
 [CHANGELOG](./CHANGELOG.md) | [LICENSE](./LICENSE)
