@@ -5,7 +5,7 @@ usage() {
   cat <<'EOM'
 
 Usage:
-  aws-ssm-rename [options] <expression> <replacement> <glob>...
+  aws-ssm-rename [options] <expression> <replacement> <parameter>...
 
 Rename AWS SSM parameters.
 
@@ -15,6 +15,7 @@ Options:
  -a, --all              replace all ocurrences
  -o, --no-overwrite     don't overwrite existing parameters
  -i, --interactive      prompt before overwrite
+ -g, --no-glob          don't match parameters as globs
 
  -h, --help             display this help
  -V, --version          display version
@@ -28,12 +29,33 @@ For more details see aws-ssm-rename(1).
 EOM
 }
 
-get_all_parameter_names() {
+get_all_parameters_matching() {
+  local parameter pattern
+
   aws ssm get-parameters-by-path \
     --path / \
     --recursive \
     --query 'Parameters[].[Name]' \
-    --output text
+    --output text |
+    while read -r parameter; do
+      for pattern; do
+        # shellcheck disable=SC2053
+        if [[ "$parameter" == $pattern ]]; then
+          echo "$parameter"
+        fi
+      done
+    done
+}
+
+get_all_parameters_named() {
+  local name
+
+  for name; do
+    aws ssm get-parameter \
+      --name "$name" \
+      --query 'Parameter.[Name]' \
+      --output text
+  done
 }
 
 does_parameter_exist() {
@@ -76,6 +98,7 @@ act=1
 sed_options=
 overwrite=1
 interactive=0
+glob=1
 
 while (($#)); do
   case "$1" in
@@ -84,6 +107,7 @@ while (($#)); do
     -a | --all) sed_options=g ;;
     -o | --no-overwrite) overwrite=0 ;;
     -i | --interactive) interactive=1 ;;
+    -g | --no-glob) glob=0 ;;
     -h | --help)
       usage
       exit 0
@@ -116,42 +140,41 @@ expression=$1
 replacement=$2
 shift 2
 
-get_all_parameter_names | while read -r original; do
-  for pattern; do
-    # shellcheck disable=SC2053
-    if [[ "$original" != $pattern ]]; then
-      continue
-    fi
+{
+  if ((glob)); then
+    get_all_parameters_matching "$@"
+  else
+    get_all_parameters_named "$@"
+  fi
+} | while read -r original; do
+  # shellcheck disable=SC2001
+  updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
 
-    # shellcheck disable=SC2001
-    updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+  if ((verbose)); then
+    printf "\`%s' -> \`%s'\n" "$original" "$updated"
+  fi
 
-    if ((verbose)); then
-      printf "\`%s' -> \`%s'\n" "$original" "$updated"
-    fi
+  if ((!act)); then
+    continue
+  fi
 
-    if ((!act)); then
-      continue
-    fi
+  needs_overwrite=0
 
-    needs_overwrite=0
+  if does_parameter_exist "$updated"; then
+    needs_overwrite=1
 
-    if does_parameter_exist "$updated"; then
-      needs_overwrite=1
+    if ((!overwrite)); then
+      if ((!interactive)); then
+        echo "Not overwriting existing parameter $updated" >&2
+        continue
+      fi
 
-      if ((!overwrite)); then
-        if ((!interactive)); then
-          echo "Not overwriting existing parameter $updated" >&2
-          continue
-        fi
-
-        if ! prompt_yes "Overwrite $updated"; then
-          echo "Not overwriting existing parameter $updated" >&2
-          continue
-        fi
+      if ! prompt_yes "Overwrite $updated"; then
+        echo "Not overwriting existing parameter $updated" >&2
+        continue
       fi
     fi
+  fi
 
-    rename_parameter "$original" "$updated" "$needs_overwrite"
-  done
+  rename_parameter "$original" "$updated" "$needs_overwrite"
 done
