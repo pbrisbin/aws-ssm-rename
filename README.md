@@ -67,7 +67,6 @@ make install.check
 
 ## TODO
 
-- [ ] Add examples to docs
 - [ ] Consider an actual programming language
 - [ ] Implement completions
 - [ ] Add tests
