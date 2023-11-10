@@ -5,7 +5,7 @@ on:
     tags:
       - "v*"
 
-permissins:
+permissions:
   contents: write
 
 jobs:
