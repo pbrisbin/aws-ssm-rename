@@ -66,6 +66,11 @@ rewrite parameters, the command will perform the action without any questions.
   * **64**:
     unanticipated error occurred
 
+## ENVIRONMENT
+
+  * `AWS_SSM_RENAME_DEBUG`
+    Set this to `1` to emit debug messages on `stderr`.
+
 ## EXAMPLES
 
 TODO

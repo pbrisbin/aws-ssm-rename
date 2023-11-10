@@ -29,37 +29,10 @@ For more details see aws-ssm-rename(1).
 EOM
 }
 
-get_all_parameters_matching() {
-  local parameter pattern
-
-  aws ssm get-parameters-by-path \
-    --path / \
-    --recursive \
-    --query 'Parameters[].[Name]' \
-    --output text |
-    while read -r parameter; do
-      for pattern; do
-        # shellcheck disable=SC2053
-        if [[ "$parameter" == $pattern ]]; then
-          echo "$parameter"
-        fi
-      done
-    done
-}
-
-get_all_parameters_named() {
-  local name
-
-  for name; do
-    aws ssm get-parameter \
-      --name "$name" \
-      --query 'Parameter.[Name]' \
-      --output text
-  done
-}
-
-does_parameter_exist() {
-  aws ssm get-parameter --name "$1" &>/dev/null
+debug() {
+  if (("${AWS_SSM_RENAME_DEBUG:-0}")); then
+    echo "[DEBUG] $*" >&2
+  fi
 }
 
 rename_parameter() {
@@ -69,12 +42,15 @@ rename_parameter() {
     <(aws ssm get-parameter --name "$original" --query 'Parameter.Value' --output text)
 
   if ((needs_overwrite)); then
-    echo aws put-parameter --name "$updated" "$value" --overwrite
+    debug aws put-parameter --name "$updated" "$value" --overwrite
+    aws put-parameter --name "$updated" "$value" --overwrite
   else
-    echo aws put-parameter --name "$updated" "$value"
+    debug aws put-parameter --name "$updated" "$value"
+    aws put-parameter --name "$updated" "$value"
   fi
 
-  echo aws delete-parameter "$original"
+  debug aws delete-parameter "$original"
+  aws delete-parameter "$original"
 }
 
 prompt() {
@@ -140,41 +116,91 @@ expression=$1
 replacement=$2
 shift 2
 
-{
-  if ((glob)); then
-    get_all_parameters_matching "$@"
-  else
-    get_all_parameters_named "$@"
-  fi
-} | while read -r original; do
+attempts=0
+failures=0
+
+if ((glob)); then
+  parameters=()
+
+  debug "glob is enabled, listing all parameters"
+  while read -r parameter; do
+    for pattern; do
+      # shellcheck disable=SC2053
+      if [[ "$parameter" == $pattern ]]; then
+        debug "matched: $parameter"
+        parameters+=("$parameter")
+      fi
+    done
+  done < <(aws ssm get-parameters-by-path \
+    --path / \
+    --recursive \
+    --query 'Parameters[].[Name]' \
+    --output text || exit 64) # failure here is "unanticipated"
+else
+  debug "glob is disabled"
+  parameters=("$@")
+fi
+
+for original in "${parameters[@]}"; do
   # shellcheck disable=SC2001
   updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+
+  if [[ "$updated" == "$original" ]]; then
+    debug "skipping: rename had no effect"
+    continue
+  fi
+
+  debug "rename: $original => $updated"
+
+  ((attempts++)) || true
 
   if ((verbose)); then
     printf "\`%s' -> \`%s'\n" "$original" "$updated"
   fi
 
   if ((!act)); then
+    debug "skipping: --no-act"
     continue
   fi
 
   needs_overwrite=0
 
-  if does_parameter_exist "$updated"; then
+  if aws ssm get-parameter --name "$updated" &>/dev/null; then
+    debug "parameter exists"
+
     if ((!overwrite)); then
       if ((!interactive)); then
+        debug "skipping: --no-overwrite, no --interactive"
         echo "Not overwriting existing parameter $updated" >&2
         continue
       fi
 
       if ! prompt_yes "Overwrite $updated"; then
+        debug "skipping: interactive answered no"
         echo "Not overwriting existing parameter $updated" >&2
         continue
       fi
     fi
 
+    debug "proceeding with overwrite"
     needs_overwrite=1
   fi
 
-  rename_parameter "$original" "$updated" "$needs_overwrite"
+  if ! rename_parameter "$original" "$updated" "$needs_overwrite"; then
+    debug "rename failed"
+    ((failures++)) || true
+  fi
 done
+
+if ((!attempts)); then
+  debug "nothing was renamed"
+  exit 4
+elif ((failures == attempts)); then
+  debug "all renames failed"
+  exit 1
+elif ((failures)); then
+  debug "some renames failed"
+  exit 2 # some renames failed
+fi
+
+debug "success"
