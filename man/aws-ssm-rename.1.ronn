@@ -73,7 +73,21 @@ rewrite parameters, the command will perform the action without any questions.
 
 ## EXAMPLES
 
-TODO
+Given the parameters <foo1>, ..., <foo9>, <foo10>, ..., <foo278>, the commands
+
+    aws-ssm-rename foo foo00 "foo?"
+    aws-ssm-rename foo foo0 "foo??"
+
+will turn then into <foo001>, ..., <foo009>, <foo010>, ..., <foo278>. And
+
+    aws-ssm-rename /dev /prod "/dev/*"
+
+will move parameters between environments. Provide an empty string for
+shortening.
+
+    aws-ssm-rename "-with-long-name" "" "/*/parameter-with-long-name/*"
+
+will remove the substring in the parameter names.
 
 ## SEE ALSO
 
