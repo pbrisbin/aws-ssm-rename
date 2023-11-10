@@ -37,7 +37,23 @@ Documentation is also available [in-repository](./man/aws-ssm-rename.1.ronn).
 
 ### Released
 
-TODO
+```console
+version=v0.0.0 # or whatever
+curl -L "https://github.com/pbrisbin/aws-ssm-rename/releases/download/$version/aws-ssm-rename.tar.gz" | tar xzvf -
+cd aws-ssm-rename
+```
+
+For user-local, run:
+
+```console
+make install PREFIX=$HOME/.local
+```
+
+For system-wide, run:
+
+```console
+sudo make install
+```
 
 ### Development
 
