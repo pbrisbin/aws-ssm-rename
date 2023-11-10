@@ -68,7 +68,7 @@ rewrite parameters, the command will perform the action without any questions.
 
 ## ENVIRONMENT
 
-  * `AWS_SSM_RENAME_DEBUG`
+  * `AWS_SSM_RENAME_DEBUG`:
     Set this to `1` to emit debug messages on `stderr`.
 
 ## EXAMPLES
