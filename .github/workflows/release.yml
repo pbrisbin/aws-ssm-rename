@@ -28,7 +28,9 @@ jobs:
       - run: echo "$HOME/.local/share/gem/ruby/3.0.0/bin" >>"$GITHUB_PATH"
       - run: gem install --user ronn-ng
       - uses: actions/checkout@v4
-      - run: make dist VERSION=${{ github.ref_name }}
+      - run: |
+          make dist VERSION=${{ github.ref_name }}
+          cp -v dist/aws-ssm-rename.tar.gz aws-ssm-rename.tar.gz
       - uses: freckle/action-gh-release@v2
         with:
           id: ${{ needs.create-release.outputs.release_id }}
