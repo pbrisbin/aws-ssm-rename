@@ -1,5 +1,5 @@
 PROGRAM := aws-ssm-rename
-VERSION := v0.0.0
+VERSION ?= v0.0.0 # NB. may not be accurate, overriden in release workflow
 
 ARCHIVE_TARGETS := \
   dist/$(PROGRAM)/aws-ssm-rename \
