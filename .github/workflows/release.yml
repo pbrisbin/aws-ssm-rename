@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissins:
+  contents: write
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
