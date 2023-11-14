@@ -35,22 +35,39 @@ debug() {
   fi
 }
 
-rename_parameter() {
-  local original=$1 updated=$2 needs_overwrite=$3 value
+debug_aws() {
+  debug "$@"
+  aws "$@"
+}
 
-  read -r value < \
-    <(aws ssm get-parameter --name "$original" --query 'Parameter.Value' --output text)
+rename_parameter() {
+  local original=$1 updated=$2 needs_overwrite=$3
+  local existing_value existing_type put_options=()
+
+  read -r existing_value existing_type < <(aws ssm get-parameter \
+    --name "$original" \
+    --query 'Parameter.[Value,Type]' \
+    --output text)
+
+  put_options=(
+    --name "$updated"
+    --value "$existing_value"
+    --type "$existing_type"
+  )
 
   if ((needs_overwrite)); then
-    debug aws put-parameter --name "$updated" "$value" --overwrite
-    aws put-parameter --name "$updated" "$value" --overwrite
-  else
-    debug aws put-parameter --name "$updated" "$value"
-    aws put-parameter --name "$updated" "$value"
+    put_options+=(--overwrite)
   fi
 
-  debug aws delete-parameter "$original"
-  aws delete-parameter "$original"
+  debug_aws ssm put-parameter "${put_options[@]}"
+
+  # Double-check the new one exists before deleting. We do not trust the CLI
+  if ! aws ssm get-parameter --name "$updated" &>/dev/null; then
+    echo "put-parameter success, but $updated does not exist" >&2
+    return 1
+  fi
+
+  debug_aws ssm delete-parameter --name "$original"
 }
 
 prompt() {
