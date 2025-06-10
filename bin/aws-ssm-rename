@@ -59,7 +59,7 @@ rename_parameter() {
     put_options+=(--overwrite)
   fi
 
-  debug_aws ssm put-parameter "${put_options[@]}"
+  debug_aws ssm put-parameter "${put_options[@]}" >/dev/null
 
   # Double-check the new one exists before deleting. We do not trust the CLI
   if ! aws ssm get-parameter --name "$updated" &>/dev/null; then
@@ -159,8 +159,19 @@ else
 fi
 
 for original in "${parameters[@]}"; do
-  # shellcheck disable=SC2001
-  updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+  # by default only the last component of the path is updated, unless expression
+  # or replacement contains a slash, then the whole path is updated.
+  if echo "$expression$replacement" | grep -Fq '/'; then
+    debug "expression or replacement contains a slash, updating whole path"
+    # shellcheck disable=SC2001
+    updated=$(echo "$original" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+  else
+    base=$(dirname "$original")
+    name=$(basename "$original")
+    # shellcheck disable=SC2001
+    updated_name=$(echo "$name" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
+    updated=$base/$updated_name
+  fi
 
   if [[ "$updated" == "$original" ]]; then
     debug "skipping: rename had no effect"
