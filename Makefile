@@ -34,6 +34,10 @@ dist/$(PROGRAM)/Makefile: Makefile.install
 	mkdir -p dist/$(PROGRAM)
 	cp "$<" "$@"
 
+.PHONY: test
+test:
+	bats test
+
 .PHONY: clean
 clean:
 	$(RM) -r ./dist
