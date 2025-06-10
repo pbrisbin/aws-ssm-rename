@@ -85,7 +85,7 @@ will turn then into <foo001>, ..., <foo009>, <foo010>, ..., <foo278>. And
 will move parameters between environments. Provide an empty string for
 shortening.
 
-    aws-ssm-rename "-with-long-name" "" "/*/parameter-with-long-name/*"
+    aws-ssm-rename -- "-with-long-name" "" "/*/parameter-with-long-name/*"
 
 will remove the substring in the parameter names.
 
