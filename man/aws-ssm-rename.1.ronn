@@ -49,6 +49,13 @@ The renaming has no safeguards by default or without any one of the options
 `--no-overwrite`, `--interactive` or `--no-act`. If the user has permission to
 rewrite parameters, the command will perform the action without any questions.
 
+## EDGE CASES
+
+Normally, only the final path component of a filename is updated. But if either
+`expression` or `replacement` contains a `/`, the full path is updated. This can
+cause a file to be moved between folders. Since folders are just prefixes in
+SSM, "creating" a new folder may occur from this operation.
+
 ## EXIT STATUS
 
   * **0**:
