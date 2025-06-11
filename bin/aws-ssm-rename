@@ -150,8 +150,10 @@ if ((glob)); then
     for pattern; do
       # shellcheck disable=SC2053
       if [[ "$parameter" == $pattern ]]; then
-        debug "matched: $parameter"
+        debug "matched: $parameter == $pattern"
         parameters+=("$parameter")
+      else
+        debug "not matched: $parameter != $pattern"
       fi
     done
   done < <(aws ssm get-parameters-by-path \
