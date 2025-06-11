@@ -69,8 +69,12 @@ make install.check
 
 - [ ] Consider an actual programming language
 - [ ] Implement completions
-- [ ] Add tests
+- [x] Add tests
+
+## LICENSE
+
+This project is licensed AGPLv3. See [COPYING](./COPYING).
 
 ---
 
-[CHANGELOG](./CHANGELOG.md) | [LICENSE](./LICENSE)
+[CHANGELOG](./CHANGELOG.md)
