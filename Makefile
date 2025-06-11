@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 PROGRAM := aws-ssm-rename
-VERSION ?= v0.0.0 # NB. may not be accurate, overriden in release workflow
+VERSION ?= v0.0.0 # NB. not accurate, overriden in release workflow
 
 ARCHIVE_TARGETS := \
   dist/$(PROGRAM)/aws-ssm-rename \
