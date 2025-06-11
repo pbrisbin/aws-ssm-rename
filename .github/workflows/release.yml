@@ -2,48 +2,29 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+      - rc/*
 
 permissions:
   contents: write
 
 jobs:
-  create-release:
+  release:
     runs-on: ubuntu-latest
-    steps:
-      - id: create-release
-        uses: freckle/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: true
-    outputs:
-      release_id: ${{ steps.create-release.outputs.id }}
 
-  upload-assets:
-    needs: create-release
-    runs-on: ubuntu-latest
     steps:
-      - run: echo "$HOME/.local/share/gem/ruby/3.0.0/bin" >>"$GITHUB_PATH"
       - run: gem install --user ronn-ng
-      - uses: actions/checkout@v4
       - run: |
-          make dist VERSION=${{ github.ref_name }}
-          cp -v dist/aws-ssm-rename.tar.gz aws-ssm-rename.tar.gz
-      - uses: freckle/action-gh-release@v2
-        with:
-          id: ${{ needs.create-release.outputs.release_id }}
-          files: "aws-ssm-rename.tar.gz"
-          fail_on_unmatched_files: true
+          for bin in "$HOME"/.local/share/gem/ruby/*/bin; do
+            echo "$bin"
+          done >>"$GITHUB_PATH"
 
-  publish-release:
-    needs:
-      - create-release
-      - upload-assets
-    runs-on: ubuntu-latest
-    steps:
-      - uses: freckle/action-gh-release@v2
+      - uses: cycjimmy/semantic-release-action@v4
         with:
-          id: ${{ needs.create-release.outputs.release_id }}
-          draft: false
+          extra_plugins: |
+            conventional-changelog-conventionalcommits
+            @semantic-release/exec
+        env:
+          FORCE_COLOR: 1
+          GITHUB_TOKEN: ${{ github.token }}

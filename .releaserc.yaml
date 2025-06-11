@@ -1,0 +1,15 @@
+plugins:
+  - - "@semantic-release/commit-analyzer"
+    - preset: "conventionalcommits"
+  - "@semantic-release/release-notes-generator"
+  - - "@semantic-release/exec"
+    - prepareCmd: "make dist VERSION=${nextRelease.version}"
+  - - "@semantic-release/github"
+    - assets: "dist/aws-ssm-rename.tar.gz"
+      successCommentCondition: false
+      failCommentCondition: false
+
+branches:
+  - main
+  - name: rc/*
+    prerelease: '${name.replace(/^rc\//, "rc-")}'
