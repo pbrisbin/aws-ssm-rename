@@ -178,7 +178,7 @@ for original in "${parameters[@]}"; do
     name=$(basename "$original")
     # shellcheck disable=SC2001
     updated_name=$(echo "$name" | sed 's|'"$expression"'|'"$replacement"'|'"$sed_options")
-    updated=$base/$updated_name
+    updated=$base$updated_name
   fi
 
   if [[ "$updated" == "$original" ]]; then
