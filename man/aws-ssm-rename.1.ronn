@@ -78,6 +78,9 @@ SSM, "creating" a new folder may occur from this operation.
   * `AWS_SSM_RENAME_DEBUG`:
     Set this to `1` to emit debug messages on `stderr`.
 
+  * `AWS_SSM_RENAME_PREFIX`:
+    Prefix prepended to parameter names for all operations, default is empty.
+
 ## EXAMPLES
 
 Given the parameters <foo1>, ..., <foo9>, <foo10>, ..., <foo278>, the commands

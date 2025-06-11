@@ -2,6 +2,7 @@
 set -euo pipefail
 
 : "${AWS_SSM_RENAME_DEBUG:=0}"
+: "${AWS_SSM_RENAME_PREFIX:=""}"
 
 usage() {
   cat <<'EOM'
@@ -47,12 +48,12 @@ rename_parameter() {
   local existing_value existing_type put_options=()
 
   read -r existing_value existing_type < <(aws ssm get-parameter \
-    --name "$original" \
+    --name "$AWS_SSM_RENAME_PREFIX$original" \
     --query 'Parameter.[Value,Type]' \
     --output text)
 
   put_options=(
-    --name "$updated"
+    --name "$AWS_SSM_RENAME_PREFIX$updated"
     --value "$existing_value"
     --type "$existing_type"
   )
@@ -64,12 +65,12 @@ rename_parameter() {
   debug_aws ssm put-parameter "${put_options[@]}" >/dev/null
 
   # Double-check the new one exists before deleting. We do not trust the CLI
-  if ! aws ssm get-parameter --name "$updated" &>/dev/null; then
+  if ! aws ssm get-parameter --name "$AWS_SSM_RENAME_PREFIX$updated" &>/dev/null; then
     echo "put-parameter success, but $updated does not exist" >&2
     return 1
   fi
 
-  debug_aws ssm delete-parameter --name "$original"
+  debug_aws ssm delete-parameter --name "$AWS_SSM_RENAME_PREFIX$original"
 }
 
 prompt() {
@@ -142,7 +143,10 @@ if ((glob)); then
   parameters=()
 
   debug "glob is enabled, listing all parameters"
-  while read -r parameter; do
+  while read -r prefixed_parameter; do
+    # shellcheck disable=SC2001
+    parameter=$(echo "$prefixed_parameter" | sed 's|^'"$AWS_SSM_RENAME_PREFIX"'||')
+
     for pattern; do
       # shellcheck disable=SC2053
       if [[ "$parameter" == $pattern ]]; then
@@ -151,7 +155,7 @@ if ((glob)); then
       fi
     done
   done < <(aws ssm get-parameters-by-path \
-    --path / \
+    --path "$AWS_SSM_RENAME_PREFIX/" \
     --recursive \
     --query 'Parameters[].[Name]' \
     --output text || exit 64) # failure here is "unanticipated"
@@ -195,7 +199,7 @@ for original in "${parameters[@]}"; do
 
   needs_overwrite=0
 
-  if aws ssm get-parameter --name "$updated" &>/dev/null; then
+  if aws ssm get-parameter --name "$AWS_SSM_RENAME_PREFIX$updated" &>/dev/null; then
     debug "parameter exists"
 
     if ((!overwrite)); then
