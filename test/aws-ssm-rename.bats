@@ -27,12 +27,13 @@ ls_parameters() {
     --path "$SSM_NAMESPACE/" \
     --recursive \
     --query "Parameters[].[Name]" \
-    --output text
+    --output text |
+    sed 's|^'"$SSM_NAMESPACE"'||'
 }
 
 teardown() {
   ls_parameters | while read -r param; do
-    aws ssm delete-parameter --name "$param"
+    aws ssm delete-parameter --name "$SSM_NAMESPACE$param"
   done
 }
 
@@ -75,9 +76,9 @@ EOM
 
   run ls_parameters
   assert_output <<EOM
-$SSM_NAMESPACE/TEST1
-$SSM_NAMESPACE/TEST2
-$SSM_NAMESPACE/skip
+/TEST1
+/TEST2
+/skip
 EOM
 }
 
@@ -97,10 +98,10 @@ EOM
 
   run ls_parameters
   assert_output <<EOM
-$SSM_NAMESPACE/foo001
-$SSM_NAMESPACE/foo009
-$SSM_NAMESPACE/foo010
-$SSM_NAMESPACE/foo278
+/foo001
+/foo009
+/foo010
+/foo278
 EOM
 }
 
@@ -117,9 +118,9 @@ EOM
 
   run ls_parameters
   assert_output <<EOM
-$SSM_NAMESPACE/prod/parameter1
-$SSM_NAMESPACE/prod/parameter2
-$SSM_NAMESPACE/prod/parameter3
+/prod/parameter1
+/prod/parameter2
+/prod/parameter3
 EOM
 
   run get_parameter "prod/parameter1"
@@ -140,9 +141,9 @@ EOM
 
   run ls_parameters
   assert_output <<EOM
-$SSM_NAMESPACE/parameter-1
-$SSM_NAMESPACE/parameter-2
-$SSM_NAMESPACE/parameter-3
+/parameter-1
+/parameter-2
+/parameter-3
 EOM
 }
 
@@ -156,8 +157,8 @@ EOM
 
   run ls_parameters
   assert_output <<EOM
-$SSM_NAMESPACE/foo
-$SSM_NAMESPACE/bar
+/foo
+/bar
 EOM
 }
 
