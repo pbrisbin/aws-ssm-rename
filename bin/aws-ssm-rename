@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+: "${AWS_SSM_RENAME_DEBUG:=0}"
+
 usage() {
   cat <<'EOM'
 
@@ -30,7 +32,7 @@ EOM
 }
 
 debug() {
-  if (("${AWS_SSM_RENAME_DEBUG:-0}")); then
+  if ((AWS_SSM_RENAME_DEBUG)); then
     echo "[DEBUG] $*" >&2
   fi
 }
