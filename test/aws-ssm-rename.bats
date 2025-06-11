@@ -5,35 +5,36 @@ setup() {
   # Ensure we can call aws-ssm-rename
   export PATH="$PWD/bin:$PATH"
 
-  export SSM_NAMESPACE="/tmp/aws-ssm-rename-tests/$$"
+  export AWS_SSM_RENAME_DEBUG=1
+  export AWS_SSM_RENAME_PREFIX="/tmp/aws-ssm-rename-tests/$$"
 }
 
 put_parameter() {
   aws ssm put-parameter \
-    --name "$SSM_NAMESPACE/$1" \
+    --name "$AWS_SSM_RENAME_PREFIX$1" \
     --value "$2" \
     --type String >/dev/null
 }
 
 get_parameter() {
   aws ssm get-parameter \
-    --name "$SSM_NAMESPACE/$1" \
+    --name "$AWS_SSM_RENAME_PREFIX$1" \
     --query "Parameter.Value" \
     --output text
 }
 
 ls_parameters() {
   aws ssm get-parameters-by-path \
-    --path "$SSM_NAMESPACE/" \
+    --path "$AWS_SSM_RENAME_PREFIX/" \
     --recursive \
     --query "Parameters[].[Name]" \
     --output text |
-    sed 's|^'"$SSM_NAMESPACE"'||'
+    sed 's|^'"$AWS_SSM_RENAME_PREFIX"'||'
 }
 
 teardown() {
   ls_parameters | while read -r param; do
-    aws ssm delete-parameter --name "$SSM_NAMESPACE$param"
+    aws ssm delete-parameter --name "$AWS_SSM_RENAME_PREFIX$param"
   done
 }
 
@@ -66,13 +67,12 @@ EOM
 }
 
 @test "simple rename" {
-  put_parameter "test1" "1"
-  put_parameter "test2" "2"
-  put_parameter "skip" "3"
+  put_parameter "/test1" "1"
+  put_parameter "/test2" "2"
+  put_parameter "/skip" "3"
 
-  run aws-ssm-rename "test" "TEST" "$SSM_NAMESPACE/test*"
+  run aws-ssm-rename "test" "TEST" "/test*"
   assert_success
-  assert_output ""
 
   run ls_parameters
   assert_output <<EOM
@@ -83,18 +83,16 @@ EOM
 }
 
 @test "man-page example foo" {
-  put_parameter "foo1" "1"
-  put_parameter "foo9" "2"
-  put_parameter "foo10" "3"
-  put_parameter "foo278" "4"
+  put_parameter "/foo1" "1"
+  put_parameter "/foo9" "2"
+  put_parameter "/foo10" "3"
+  put_parameter "/foo278" "4"
 
-  run aws-ssm-rename "foo" "foo00" "$SSM_NAMESPACE/foo?"
+  run aws-ssm-rename "foo" "foo00" "/foo?"
   assert_success
-  assert_output ""
 
-  run aws-ssm-rename "foo" "foo0" "$SSM_NAMESPACE/foo??"
+  run aws-ssm-rename "foo" "foo0" "/foo??"
   assert_success
-  assert_output ""
 
   run ls_parameters
   assert_output <<EOM
@@ -106,15 +104,14 @@ EOM
 }
 
 @test "man-page example dev/prod" {
-  put_parameter "dev/parameter1" "d1"
-  put_parameter "dev/parameter2" "d2"
-  put_parameter "dev/parameter3" "d3"
-  put_parameter "prod/parameter1" "p1"
-  put_parameter "prod/parameter2" "p2"
+  put_parameter "/dev/parameter1" "d1"
+  put_parameter "/dev/parameter2" "d2"
+  put_parameter "/dev/parameter3" "d3"
+  put_parameter "/prod/parameter1" "p1"
+  put_parameter "/prod/parameter2" "p2"
 
-  run aws-ssm-rename "/dev/" "/prod/" "$SSM_NAMESPACE/dev/*"
+  run aws-ssm-rename "/dev/" "/prod/" "/dev/*"
   assert_success
-  assert_output ""
 
   run ls_parameters
   assert_output <<EOM
@@ -123,21 +120,20 @@ EOM
 /prod/parameter3
 EOM
 
-  run get_parameter "prod/parameter1"
+  run get_parameter "/prod/parameter1"
   assert_output "d1"
 
-  run get_parameter "prod/parameter2"
+  run get_parameter "/prod/parameter2"
   assert_output "d2"
 }
 
 @test "man-page example shortening" {
-  put_parameter "parameter-with-long-name-1" "1"
-  put_parameter "parameter-with-long-name-2" "2"
-  put_parameter "parameter-with-long-name-3" "3"
+  put_parameter "/parameter-with-long-name-1" "1"
+  put_parameter "/parameter-with-long-name-2" "2"
+  put_parameter "/parameter-with-long-name-3" "3"
 
-  run aws-ssm-rename -- "-with-long-name" "" "$SSM_NAMESPACE/parameter-with-long-name-*"
+  run aws-ssm-rename -- "-with-long-name" "" "/parameter-with-long-name-*"
   assert_success
-  assert_output ""
 
   run ls_parameters
   assert_output <<EOM
@@ -148,24 +144,27 @@ EOM
 }
 
 @test "with --no-overwrite" {
-  put_parameter "foo" "1"
-  put_parameter "bar" "2"
+  put_parameter "/foo" "1"
+  put_parameter "/bar" "2"
 
-  run aws-ssm-rename --no-overwrite "foo" "bar" "$SSM_NAMESPACE/*"
+  run aws-ssm-rename --no-overwrite "foo" "bar" "/*"
   assert_success
-  assert_output "Not overwriting existing parameter $SSM_NAMESPACE/bar"
+  assert_output --partial "Not overwriting existing parameter /bar"
 
   run ls_parameters
   assert_output <<EOM
 /foo
 /bar
 EOM
+
+  run get_parameter "/bar"
+  assert_output "2"
 }
 
 @test "exits 4 if nothing renamed" {
-  put_parameter "foo" "1"
-  put_parameter "bar" "1"
+  put_parameter "/foo" "1"
+  put_parameter "/bar" "1"
 
-  run aws-ssm-rename "baz" "bat" "$SSM_NAMESPACE/*"
+  run aws-ssm-rename "baz" "bat" "/*"
   assert_failure 4
 }
