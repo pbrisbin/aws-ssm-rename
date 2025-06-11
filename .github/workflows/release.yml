@@ -20,6 +20,7 @@ jobs:
             echo "$bin"
           done >>"$GITHUB_PATH"
 
+      - uses: actions/checkout@v4
       - uses: cycjimmy/semantic-release-action@v4
         with:
           extra_plugins: |
