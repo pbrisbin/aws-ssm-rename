@@ -12,7 +12,7 @@ put_parameter() {
   aws ssm put-parameter \
     --name "$SSM_NAMESPACE/$1" \
     --value "$2" \
-    --type String
+    --type String >/dev/null
 }
 
 get_parameter() {
@@ -144,4 +144,27 @@ $SSM_NAMESPACE/parameter-1
 $SSM_NAMESPACE/parameter-2
 $SSM_NAMESPACE/parameter-3
 EOM
+}
+
+@test "with --no-overwrite" {
+  put_parameter "foo" "1"
+  put_parameter "bar" "2"
+
+  run aws-ssm-rename --no-overwrite "foo" "bar" "$SSM_NAMESPACE/*"
+  assert_success
+  assert_output "Not overwriting existing parameter $SSM_NAMESPACE/bar"
+
+  run ls_parameters
+  assert_output <<EOM
+$SSM_NAMESPACE/foo
+$SSM_NAMESPACE/bar
+EOM
+}
+
+@test "exits 4 if nothing renamed" {
+  put_parameter "foo" "1"
+  put_parameter "bar" "1"
+
+  run aws-ssm-rename "baz" "bat" "$SSM_NAMESPACE/*"
+  assert_failure 4
 }
